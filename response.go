@@ -1,11 +1,4 @@
-// TODO: Add custom 404 so missing pages can be logged.
-// Reference:
-// http://stackoverflow.com/questions/26141953/custom-404-with-gorilla-mux-and-std-http-fileserver
-
 package gogoapi
-
-import (
-)
 
 type StatusResponse interface {
 	Status() int
@@ -37,4 +30,3 @@ func (response JSONMessage) Status() int {
 func (response JSONData) Status() int {
 	return response.StatusCode
 }
-

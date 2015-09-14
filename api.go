@@ -11,19 +11,6 @@ import (
 	"net/http"
 )
 
-const (
-	GET    = "GET"
-	POST   = "POST"
-	PUT    = "PUT"
-	DELETE = "DELETE"
-	HEAD   = "HEAD"
-	PATCH  = "PATCH"
-)
-
-type HandlerFunc func(*http.Request) (int, interface{}, http.Header)
-
-type WrapperFunc func(*http.Request, HandlerFunc) (int, interface{}, http.Header)
-
 type API struct {
 	router           *mux.Router
 	wrapperFuncs     []WrapperFunc
@@ -35,14 +22,6 @@ func NewAPI(wrapperFuncs []WrapperFunc) *API {
 	api := API{router, wrapperFuncs, nil}
 	api.methodNotAllowed = api.WrapHandler(MethodNotAllowed, wrapperFuncs)
 	return &api
-}
-
-func MethodNotAllowed(
-	httpRequest *http.Request,
-) (int, interface{}, http.Header) {
-	status := http.StatusMethodNotAllowed
-	error := fmt.Sprintf("%s method not allowed.", httpRequest.Method)
-	return status, JSONError{status, error}, nil
 }
 
 func (api *API) HttpRequestHandler(

@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	DEFAULT_TOKEN_DURATION = 24 * 60 // 24 hours, probably too long
-	READ_BUFFER_SIZE = 1024 * 1024 // 1 meg
+	DEFAULT_TOKEN_DURATION = 24 * 60     // 24 hours, probably too long
+	READ_BUFFER_SIZE       = 1024 * 1024 // 1 meg
 )
 
 type AuthCredentials struct {
@@ -35,8 +35,8 @@ type AuthResponse struct {
 }
 
 type AuthResource struct {
-	verifyKey *rsa.PublicKey
-	signKey   *rsa.PrivateKey
+	verifyKey     *rsa.PublicKey
+	signKey       *rsa.PrivateKey
 	tokenDuration time.Duration
 }
 
@@ -71,7 +71,7 @@ func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.He
 	fatal(err)
 
 	if err := json.Unmarshal(body, &credentials); err != nil {
-		status := 422
+		status := HTTP_UNPROCESSABLE
 		return status, JSONError{status, "Unprocessable entity."}, nil
 	}
 
@@ -141,4 +141,3 @@ func (auth *AuthResource) AuthorizationRequired(request *http.Request, inner Han
 	}
 	return inner(request)
 }
-

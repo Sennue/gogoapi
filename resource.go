@@ -1,7 +1,3 @@
-// TODO: Add custom 404 so missing pages can be logged.
-// Reference:
-// http://stackoverflow.com/questions/26141953/custom-404-with-gorilla-mux-and-std-http-fileserver
-
 package gogoapi
 
 import (
@@ -31,4 +27,3 @@ type HeadResource interface {
 type PatchResource interface {
 	Patch(*http.Request) (int, interface{}, http.Header)
 }
-
