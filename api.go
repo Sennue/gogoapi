@@ -20,34 +20,6 @@ const (
 	PATCH  = "PATCH"
 )
 
-type GetResource interface {
-	Get(*http.Request) (int, interface{}, http.Header)
-}
-
-type PostResource interface {
-	Post(*http.Request) (int, interface{}, http.Header)
-}
-
-type PutResource interface {
-	Put(*http.Request) (int, interface{}, http.Header)
-}
-
-type DeleteResource interface {
-	Delete(*http.Request) (int, interface{}, http.Header)
-}
-
-type HeadResource interface {
-	Head(*http.Request) (int, interface{}, http.Header)
-}
-
-type PatchResource interface {
-	Patch(*http.Request) (int, interface{}, http.Header)
-}
-
-type StatusResponse interface {
-	Status() int
-}
-
 type HandlerFunc func(*http.Request) (int, interface{}, http.Header)
 
 type WrapperFunc func(*http.Request, HandlerFunc) (int, interface{}, http.Header)
@@ -56,33 +28,6 @@ type API struct {
 	router           *mux.Router
 	wrapperFuncs     []WrapperFunc
 	methodNotAllowed HandlerFunc
-}
-
-type JSONError struct {
-	StatusCode int    `json:"status"`
-	Error      string `json:"error"`
-}
-
-type JSONMessage struct {
-	StatusCode int    `json:"status"`
-	Message    string `json:"message"`
-}
-
-type JSONData struct {
-	StatusCode int         `json:"status"`
-	Data       interface{} `json:"data"`
-}
-
-func (response JSONError) Status() int {
-	return response.StatusCode
-}
-
-func (response JSONMessage) Status() int {
-	return response.StatusCode
-}
-
-func (response JSONData) Status() int {
-	return response.StatusCode
 }
 
 func NewAPI(wrapperFuncs []WrapperFunc) *API {

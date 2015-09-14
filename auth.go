@@ -9,11 +9,15 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+)
+
+const (
+	DEFAULT_TOKEN_DURATION = 24 * 60 // 24 hours, probably too long
+	READ_BUFFER_SIZE = 1024 * 1024 // 1 meg
 )
 
 type AuthCredentials struct {
@@ -33,15 +37,10 @@ type AuthResponse struct {
 type AuthResource struct {
 	verifyKey *rsa.PublicKey
 	signKey   *rsa.PrivateKey
+	tokenDuration time.Duration
 }
 
-func fatal(err error) {
-	if nil != err {
-		log.Fatal(err)
-	}
-}
-
-func NewAuthResource(privateKeyPath, publicKeyPath string) *AuthResource {
+func NewAuthResource(privateKeyPath, publicKeyPath string, tokenDuration time.Duration) *AuthResource {
 	verifyBytes, err := ioutil.ReadFile(publicKeyPath)
 	fatal(err)
 
@@ -54,7 +53,10 @@ func NewAuthResource(privateKeyPath, publicKeyPath string) *AuthResource {
 	signKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
 	fatal(err)
 
-	return &AuthResource{verifyKey, signKey}
+	if tokenDuration < 1 {
+		tokenDuration = DEFAULT_TOKEN_DURATION
+	}
+	return &AuthResource{verifyKey, signKey, tokenDuration}
 }
 
 // get token
@@ -62,7 +64,7 @@ func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.He
 	username := "username"
 	password := "password"
 	var credentials AuthCredentials
-	body, err := ioutil.ReadAll(io.LimitReader(request.Body, 1024*1024))
+	body, err := ioutil.ReadAll(io.LimitReader(request.Body, READ_BUFFER_SIZE))
 	fatal(err)
 
 	err = request.Body.Close()
@@ -91,7 +93,7 @@ func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.He
 
 	// set the expire time
 	// see http://tools.ietf.org/html/draft-ietf-oauth-json-web-token-20#section-4.1.4
-	t.Claims["exp"] = time.Now().Add(time.Minute * 60 * 24).Unix()
+	t.Claims["exp"] = time.Now().Add(time.Minute * auth.tokenDuration).Unix()
 	tokenString, err := t.SignedString(auth.signKey)
 	if err != nil {
 		status := http.StatusInternalServerError
@@ -106,6 +108,7 @@ func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.He
 }
 
 // authorization test
+// need to somehow pass AuthResource object
 func (auth *AuthResource) IsAuthorized(request *http.Request) (bool, *jwt.Token, error) {
 	tokenString := request.Header.Get("Authorization")
 	if "" == tokenString {
@@ -138,3 +141,4 @@ func (auth *AuthResource) AuthorizationRequired(request *http.Request, inner Han
 	}
 	return inner(request)
 }
+
