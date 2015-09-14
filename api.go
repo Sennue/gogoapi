@@ -1,6 +1,6 @@
-// TODO: Add custom 404 so missing pages can be logged.
+// TODO: Add SSL support
 // Reference:
-// http://stackoverflow.com/questions/26141953/custom-404-with-gorilla-mux-and-std-http-fileserver
+// https://gist.github.com/michaljemala/d6f4e01c4834bf47a9c4
 
 package gogoapi
 
@@ -21,6 +21,8 @@ func NewAPI(wrapperFuncs []WrapperFunc) *API {
 	router := mux.NewRouter().StrictSlash(true)
 	api := API{router, wrapperFuncs, nil}
 	api.methodNotAllowed = api.WrapHandler(MethodNotAllowed, wrapperFuncs)
+	wrappedPageNotFound := api.WrapHandler(PageNotFound, wrapperFuncs)
+	router.NotFoundHandler = api.HttpRequestHandler(wrappedPageNotFound)
 	return &api
 }
 

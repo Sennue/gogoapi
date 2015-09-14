@@ -16,3 +16,14 @@ func MethodNotAllowed(
 	error := fmt.Sprintf("%s method not allowed.", httpRequest.Method)
 	return status, JSONError{status, error}, nil
 }
+
+func PageNotFound(
+	httpRequest *http.Request,
+) (int, interface{}, http.Header) {
+	status := http.StatusNotFound
+	host := httpRequest.URL.Host
+	path := httpRequest.URL.Path
+	error := fmt.Sprintf("%s%s page not found.", host, path)
+	return status, JSONError{status, error}, nil
+}
+
