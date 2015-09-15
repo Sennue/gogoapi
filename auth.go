@@ -54,24 +54,17 @@ func NewAuthResource(privateKeyPath, publicKeyPath string, tokenDuration time.Du
 	return &AuthResource{verifyKey, signKey, tokenDuration, validator}
 }
 
-// get token
-func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.Header) {
-	// validate using user supplied function
-	success, claims, errorResponseObject := auth.validator(request)
-	if !success {
-		return errorResponseObject.Status(), errorResponseObject, nil
-	}
-
+func (auth *AuthResource) AuthTokenResponse(claims map[string]interface{}) (int, interface{}, http.Header) {
 	// create a signer for rsa 256
-	t := jwt.New(jwt.GetSigningMethod("RS256"))
+	token := jwt.New(jwt.GetSigningMethod("RS256"))
 
 	// set our claims
-	t.Claims = claims
+	token.Claims = claims
 
 	// set the expire time
 	// see http://tools.ietf.org/html/draft-ietf-oauth-json-web-token-20#section-4.1.4
-	t.Claims["exp"] = time.Now().Add(time.Minute * auth.tokenDuration).Unix()
-	tokenString, err := t.SignedString(auth.signKey)
+	token.Claims["exp"] = time.Now().Add(time.Minute * auth.tokenDuration).Unix()
+	tokenString, err := token.SignedString(auth.signKey)
 	if err != nil {
 		status := http.StatusInternalServerError
 		return status, JSONError{status, "Token signing error."}, nil
@@ -84,8 +77,19 @@ func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.He
 	return http.StatusOK, response, nil
 }
 
+// get token
+func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.Header) {
+	// validate using user supplied function
+	success, claims, errorResponseObject := auth.validator(request)
+	if !success {
+		return errorResponseObject.Status(), errorResponseObject, nil
+	}
+
+	return auth.AuthTokenResponse(claims)
+}
+
 // authorization test
-// need to somehow pass AuthResource object
+// using this method will require a reference to the auth object
 func (auth *AuthResource) IsAuthorized(request *http.Request) (bool, *jwt.Token, error) {
 	tokenString := request.Header.Get("Authorization")
 	if "" == tokenString {
