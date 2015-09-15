@@ -26,4 +26,3 @@ func PageNotFound(
 	error := fmt.Sprintf("%s%s page not found.", host, path)
 	return status, JSONError{status, error}, nil
 }
-

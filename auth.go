@@ -6,8 +6,6 @@ package gogoapi
 
 import (
 	"crypto/rsa"
-	"encoding/json"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -16,19 +14,10 @@ import (
 )
 
 const (
-	DEFAULT_TOKEN_DURATION = 24 * 60     // 24 hours, probably too long
-	READ_BUFFER_SIZE       = 1024 * 1024 // 1 meg
+	DEFAULT_TOKEN_DURATION = 24 * 60 // 24 hours, probably too long
 )
 
-type AuthCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type AuthUserInfo struct {
-	Username string `json:"username"`
-	Type     string `json:"type"`
-}
+type AuthValidator func(request *http.Request) (bool, map[string]interface{}, StatusResponse)
 
 type AuthResponse struct {
 	AccessToken string `json:"access_token"`
@@ -38,9 +27,10 @@ type AuthResource struct {
 	verifyKey     *rsa.PublicKey
 	signKey       *rsa.PrivateKey
 	tokenDuration time.Duration
+	validator     AuthValidator
 }
 
-func NewAuthResource(privateKeyPath, publicKeyPath string, tokenDuration time.Duration) *AuthResource {
+func NewAuthResource(privateKeyPath, publicKeyPath string, tokenDuration time.Duration, validator AuthValidator) *AuthResource {
 	verifyBytes, err := ioutil.ReadFile(publicKeyPath)
 	fatal(err)
 
@@ -56,40 +46,27 @@ func NewAuthResource(privateKeyPath, publicKeyPath string, tokenDuration time.Du
 	if tokenDuration < 1 {
 		tokenDuration = DEFAULT_TOKEN_DURATION
 	}
-	return &AuthResource{verifyKey, signKey, tokenDuration}
+
+	if nil == validator {
+		validator = DummyAuthValidator
+	}
+
+	return &AuthResource{verifyKey, signKey, tokenDuration, validator}
 }
 
 // get token
 func (auth *AuthResource) Post(request *http.Request) (int, interface{}, http.Header) {
-	username := "username"
-	password := "password"
-	var credentials AuthCredentials
-	body, err := ioutil.ReadAll(io.LimitReader(request.Body, READ_BUFFER_SIZE))
-	fatal(err)
-
-	err = request.Body.Close()
-	fatal(err)
-
-	if err := json.Unmarshal(body, &credentials); err != nil {
-		status := HTTP_UNPROCESSABLE
-		return status, JSONError{status, "Unprocessable entity."}, nil
-	}
-
-	// check values
-	if credentials.Username != username || credentials.Password != password {
-		status := http.StatusForbidden
-		return status, JSONError{status, "Authentication failed."}, nil
+	// validate using user supplied function
+	success, claims, errorResponseObject := auth.validator(request)
+	if !success {
+		return errorResponseObject.Status(), errorResponseObject, nil
 	}
 
 	// create a signer for rsa 256
 	t := jwt.New(jwt.GetSigningMethod("RS256"))
 
 	// set our claims
-	t.Claims["AccessToken"] = "level 1"
-	t.Claims["CustomUserInfo"] = AuthUserInfo{
-		Username: credentials.Username,
-		Type:     "user",
-	}
+	t.Claims = claims
 
 	// set the expire time
 	// see http://tools.ietf.org/html/draft-ietf-oauth-json-web-token-20#section-4.1.4
